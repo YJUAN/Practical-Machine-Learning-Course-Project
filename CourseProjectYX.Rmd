@@ -1,0 +1,60 @@
+---
+title: "PracticalMachineLearningCourseProject"
+author: "Yan Juan Xu"
+date: "6 augustus 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+This is an R Markdown document for the course"Practical Machine Learning". 
+
+```{r}
+#Load libraries and datasets
+library(ggplot2);library(caret);library(rpart);library(gbm);library(mclust)
+library(randomForest);library(DataExplorer)
+data1=read.csv("C:/Users/juan.xu/Downloads/pml-training.csv")
+data2=read.csv("C:/Users/juan.xu/Downloads/pml-testing.csv")
+```
+
+```{r}
+#Exploratory data analysis to get to know the data
+#Check the missingdata
+introduce(data1)
+plot_missing(data1)
+```
+```{r}
+#remove columns that contain too much missing values
+keep.cols=which(apply(!is.na(data1),2,all))
+data1<-data1[,keep.cols]
+trainData<-data1[,-c(1,6,12:23,43:48,52:60,74:82,85,86)]
+testData<-data2[,-c(1,12:36,50:59,69:83,87:101,103:112,125:139,141:150,160)]
+set.seed(1)
+```
+```{r}
+#Separate training data into training and testing subsets
+#Testing set serves as validation set.
+inTrain<-createDataPartition(y=trainData$classe,p=0.7,list=FALSE)
+training<-trainData[inTrain,]
+testing<-trainData[-inTrain,]
+```
+
+```{r}
+#Fitting random forests model
+modFit<-randomForest(classe~.,training,ntree=100)
+pred<-predict(modFit,testing)
+table(pred,testing$classe)
+modFit
+```
+```{r}
+#I chose random forest model because of its high accuaracy
+#The expected out of sample error is 0.13%
+#Make the levels of the factor varibles equal in order to use random forest model 
+levels(testData$user_name)<-levels(trainData$user_name);
+levels(testData$cvtd_timestamp)<-levels(trainData$cvtd_timestamp)
+predict(modFit,testData)
+```
+
