@@ -1,0 +1,88 @@
+---
+title: "Resubmitted Course Project PML"
+author: "Yan Juan Xu"
+date: "13 augustus 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document for the project of the course "Practical Machine Learning" on Coursera. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants and predict the manner in which they did the exercise.
+
+```{r}
+#Load the libraries
+library(caret);library(ggplot2);library(rpart);library(gbm);library(mclust)
+library(randomForest);library(tidyr);library(dplyr);library(e1071)
+```
+```{r}
+#Load data sets
+data1=read.csv("C:/Users/juan.xu/Downloads/pml-training.csv")
+data2=read.csv("C:/Users/juan.xu/Downloads/pml-testing.csv")
+#Removing the near zero variance columns
+nsvCols<-nearZeroVar(data1)
+newdata1<-data1[,-nsvCols]
+#dim(data1);dim(newdata1)
+#Remove columns with 90% threshold of NA's
+a<-NULL
+n<-1
+for(i in 1:length(newdata1))
+  if (sum(is.na(newdata1[,i]))/nrow(newdata1)>=0.9){
+    a[n]=i
+    n=n+1
+  }
+
+trainData<-newdata1[,-a]
+#Remove column 1 which is not relevant for modelling
+trainData<-trainData[,-1]
+#Do the same on data2 but don't have to do the for loops because it's already quite clean
+nsvCols<-nearZeroVar(data2)
+newdata2<-data2[,-nsvCols]
+str(newdata2)
+#Remove the first and last columns which are irrelevant for modelling
+testData<-newdata2[,-c(1,59)]
+set.seed(1)
+```
+```{r}
+#Separate training data into training and testing subsets
+#Testing set serves as validation set.
+inTrain<-createDataPartition(y=trainData$classe,p=0.7,list=FALSE)
+training<-trainData[inTrain,]
+testing<-trainData[-inTrain,]
+```
+```{r}
+#Fitting the models
+modFit1<-train(classe~.,method="rpart", preProc=c("center","scale"),data=training)
+pred1<-predict(modFit1,testing)
+table(pred1,testing$classe)
+modFit1
+
+modFit2<-train(classe~.,method="lda",preProc=c("center","scale"),data=training)
+pred2<-predict(modFit2,testing)
+table(pred2,testing$classe)
+modFit2
+
+#Fitting random forests model
+
+modFit3<-randomForest(classe~.,training,ntree=150)
+pred3<-predict(modFit3,testing)
+table(pred3,testing$classe)
+modFit3
+
+#Combining the predictors is not better.
+predDF<-data.frame(pred1,pred2,pred3,classe=testing$classe)
+combModFit<-train(classe~.,method="gam",data=predDF)
+combPred<-predict(combModFit,predDF)
+table(combPred,testing$classe)
+combModFit
+
+#I chose random forest model because of its high accuaracy
+#Make the levels of the factor varibles equal in order to use random forest model 
+levels(testData$user_name)<-levels(trainData$user_name);
+levels(testData$cvtd_timestamp)<-levels(trainData$cvtd_timestamp)
+predict(modFit3,testData)
+```
+
